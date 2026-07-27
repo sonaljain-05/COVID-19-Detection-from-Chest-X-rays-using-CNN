@@ -39,7 +39,7 @@ def load_model():
     # Build model
     model(np.zeros((1,224,224,3), dtype=np.float32))
 
-    w = np.load("classifier_head_fp16.npz")
+    w = np.load("classifier_head_fp_16.npz")
 
     model.layers[2].set_weights([
         w["dense_kernel"].astype(np.float32),
