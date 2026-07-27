@@ -1,0 +1,6 @@
+Flask
+tensorflow
+numpy
+Pillow
+h5py
+keras-tuner
