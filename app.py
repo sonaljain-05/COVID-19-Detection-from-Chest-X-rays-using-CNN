@@ -1,7 +1,10 @@
 import streamlit as st
 import tensorflow as tf
 import numpy as np
+import requests
+
 from PIL import Image
+from io import BytesIO
 from pathlib import Path
 
 from tensorflow.keras.applications import VGG16
@@ -9,56 +12,13 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Flatten, Dense, Dropout
 
 
+# ---------------- PAGE CONFIG ----------------
+
 st.set_page_config(
     page_title="COVID-19 Detection",
     page_icon="🩺",
     layout="centered"
 )
-
-
-# ---------- Custom CSS ----------
-st.markdown("""
-<style>
-
-.main {
-    background-color: #f7fbff;
-}
-
-.title {
-    text-align: center;
-    font-size: 42px;
-    font-weight: 800;
-    color: #0b3d91;
-}
-
-.subtitle {
-    text-align: center;
-    font-size: 18px;
-    color: #555;
-    margin-bottom: 30px;
-}
-
-.card {
-    background: white;
-    padding: 25px;
-    border-radius: 20px;
-    box-shadow: 0px 4px 15px rgba(0,0,0,0.08);
-    margin-bottom: 20px;
-}
-
-.result {
-    padding: 20px;
-    border-radius: 15px;
-    background: #e8f5e9;
-    text-align: center;
-    font-size: 28px;
-    font-weight: bold;
-    color: #1b5e20;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
 
 
 classes = [
@@ -68,6 +28,52 @@ classes = [
 ]
 
 
+# ---------------- CUSTOM CSS ----------------
+
+st.markdown("""
+<style>
+
+body {
+    background-color: #f5f9ff;
+}
+
+.title {
+    text-align:center;
+    color:#0b3d91;
+    font-size:42px;
+    font-weight:800;
+}
+
+.subtitle {
+    text-align:center;
+    color:#555;
+    font-size:18px;
+    margin-bottom:30px;
+}
+
+.card {
+    background:white;
+    padding:25px;
+    border-radius:20px;
+    box-shadow:0px 5px 20px rgba(0,0,0,0.1);
+}
+
+.result {
+    background:#e8f5e9;
+    padding:20px;
+    border-radius:15px;
+    text-align:center;
+    color:#1b5e20;
+    font-size:28px;
+    font-weight:bold;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+
+
+# ---------------- LOAD MODEL ----------------
 
 @st.cache_resource
 def load_model():
@@ -92,10 +98,14 @@ def load_model():
     ])
 
 
-    model(np.zeros((1,224,224,3), dtype=np.float32))
+    # Build model
+    model(
+        np.zeros((1,224,224,3), dtype=np.float32)
+    )
 
 
-    model_file = Path(__file__).parent / "classifier_head_fp16 .npz"
+    # Load classifier weights
+    model_file = Path(__file__).parent / "classifier_head_fp16.npz"
 
 
     w = np.load(
@@ -124,87 +134,124 @@ model = load_model()
 
 
 
-# ---------- UI ----------
+# ---------------- APP UI ----------------
+
 
 st.markdown(
     '<div class="title">🩺 COVID-19 Detection</div>',
     unsafe_allow_html=True
 )
 
+
 st.markdown(
-    '<div class="subtitle">AI Powered Chest X-Ray Analysis using VGG16 CNN</div>',
+    '<div class="subtitle">AI Based Chest X-Ray Classification using VGG16 CNN</div>',
     unsafe_allow_html=True
 )
 
 
 
-st.markdown('<div class="card">', unsafe_allow_html=True)
-
-
-uploaded_file = st.file_uploader(
-    "📤 Upload Chest X-Ray Image",
-    type=["jpg","jpeg","png"]
+st.markdown(
+    '<div class="card">',
+    unsafe_allow_html=True
 )
 
 
-st.markdown('</div>', unsafe_allow_html=True)
+
+image_url = st.text_input(
+    "🔗 Enter Chest X-Ray Image URL"
+)
+
+
+st.markdown(
+    '</div>',
+    unsafe_allow_html=True
+)
 
 
 
-if uploaded_file:
+# ---------------- PREDICTION ----------------
 
 
-    image = Image.open(uploaded_file).convert("RGB")
+if image_url:
 
 
-    st.image(
-        image,
-        caption="Uploaded Chest X-Ray",
-        use_container_width=True
-    )
+    try:
+
+        response = requests.get(
+            image_url,
+            timeout=10
+        )
 
 
-    img = image.resize((224,224))
+        image = Image.open(
+            BytesIO(response.content)
+        ).convert("RGB")
 
 
-    img_array = np.array(img) / 255.0
-
-    img_array = np.expand_dims(
-        img_array,
-        axis=0
-    )
-
-
-    with st.spinner("Analyzing X-Ray..."):
-
-        prediction = model.predict(img_array)
+        st.image(
+            image,
+            caption="Chest X-Ray Image",
+            use_container_width=True
+        )
 
 
-    result = classes[np.argmax(prediction)]
-
-    confidence = np.max(prediction)*100
-
-
-
-    st.markdown(
-        f"""
-        <div class="result">
-        🧬 Result: {result}
-        <br>
-        🎯 Confidence: {confidence:.2f}%
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+        img = image.resize(
+            (224,224)
+        )
 
 
-    st.progress(
-        int(confidence)
-    )
+        img_array = np.array(img) / 255.0
+
+
+        img_array = np.expand_dims(
+            img_array,
+            axis=0
+        )
+
+
+        with st.spinner("Analyzing X-Ray..."):
+
+            prediction = model.predict(
+                img_array
+            )
+
+
+        result = classes[
+            np.argmax(prediction)
+        ]
+
+
+        confidence = (
+            np.max(prediction) * 100
+        )
+
+
+        st.markdown(
+            f"""
+            <div class="result">
+            🧬 Prediction: {result}
+            <br><br>
+            🎯 Confidence: {confidence:.2f}%
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+
+        st.progress(
+            int(confidence)
+        )
+
+
+    except Exception as e:
+
+        st.error(
+            f"Image URL load failed: {e}"
+        )
 
 
 else:
 
     st.info(
-        "Please upload a chest X-ray image to start diagnosis."
+        "Please enter a chest X-ray image URL."
     )
