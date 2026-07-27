@@ -12,7 +12,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Flatten, Dense, Dropout
 
 
-# ---------------- PAGE CONFIG ----------------
+# ---------------- PAGE SETTINGS ----------------
 
 st.set_page_config(
     page_title="COVID-19 Detection",
@@ -28,34 +28,23 @@ classes = [
 ]
 
 
-# ---------------- CUSTOM CSS ----------------
+# ---------------- STYLE ----------------
 
 st.markdown("""
 <style>
 
-body {
-    background-color: #f5f9ff;
-}
-
 .title {
     text-align:center;
-    color:#0b3d91;
     font-size:42px;
     font-weight:800;
+    color:#0b3d91;
 }
 
 .subtitle {
     text-align:center;
-    color:#555;
     font-size:18px;
-    margin-bottom:30px;
-}
-
-.card {
-    background:white;
-    padding:25px;
-    border-radius:20px;
-    box-shadow:0px 5px 20px rgba(0,0,0,0.1);
+    color:#555;
+    margin-bottom:25px;
 }
 
 .result {
@@ -63,9 +52,9 @@ body {
     padding:20px;
     border-radius:15px;
     text-align:center;
-    color:#1b5e20;
     font-size:28px;
     font-weight:bold;
+    color:#1b5e20;
 }
 
 </style>
@@ -73,7 +62,7 @@ body {
 
 
 
-# ---------------- LOAD MODEL ----------------
+# ---------------- MODEL LOAD ----------------
 
 @st.cache_resource
 def load_model():
@@ -104,8 +93,16 @@ def load_model():
     )
 
 
-    # Load classifier weights
+    # Load weights file
     model_file = Path(__file__).parent / "classifier_head_fp16.npz"
+
+
+    if not model_file.exists():
+        st.error(
+            "classifier_head_fp16.npz file not found. "
+            "Please upload the file with exact name."
+        )
+        st.stop()
 
 
     w = np.load(
@@ -134,7 +131,7 @@ model = load_model()
 
 
 
-# ---------------- APP UI ----------------
+# ---------------- UI ----------------
 
 
 st.markdown(
@@ -144,14 +141,7 @@ st.markdown(
 
 
 st.markdown(
-    '<div class="subtitle">AI Based Chest X-Ray Classification using VGG16 CNN</div>',
-    unsafe_allow_html=True
-)
-
-
-
-st.markdown(
-    '<div class="card">',
+    '<div class="subtitle">AI Based Chest X-Ray Analysis using VGG16 CNN</div>',
     unsafe_allow_html=True
 )
 
@@ -162,24 +152,14 @@ image_url = st.text_input(
 )
 
 
-st.markdown(
-    '</div>',
-    unsafe_allow_html=True
-)
-
-
-
-# ---------------- PREDICTION ----------------
-
 
 if image_url:
-
 
     try:
 
         response = requests.get(
             image_url,
-            timeout=10
+            timeout=15
         )
 
 
@@ -190,7 +170,7 @@ if image_url:
 
         st.image(
             image,
-            caption="Chest X-Ray Image",
+            caption="Chest X-Ray",
             use_container_width=True
         )
 
@@ -246,7 +226,7 @@ if image_url:
     except Exception as e:
 
         st.error(
-            f"Image URL load failed: {e}"
+            f"Image loading error: {e}"
         )
 
 
