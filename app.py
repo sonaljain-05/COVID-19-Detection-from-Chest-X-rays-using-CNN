@@ -94,7 +94,7 @@ def load_model():
 
 
     # Load weights file
-    model_file = Path(__file__).parent / "classifier_head_fp16.npz"
+    model_file = Path(__file__).parent / "classifier_head_fp16 .npz"
 
 
     if not model_file.exists():
