@@ -87,20 +87,18 @@ def load_model():
     ])
 
 
-    # Build model
     model(
         np.zeros((1,224,224,3), dtype=np.float32)
     )
 
 
-    # Load weights file
-    model_file = Path(__file__).parent / "classifier_head_fp16 .npz"
+    # Correct file name (no space)
+    model_file = Path(__file__).parent / "classifier_head_fp16.npz"
 
 
     if not model_file.exists():
         st.error(
-            "classifier_head_fp16.npz file not found. "
-            "Please upload the file with exact name."
+            "classifier_head_fp16.npz file not found."
         )
         st.stop()
 
@@ -133,7 +131,6 @@ model = load_model()
 
 # ---------------- UI ----------------
 
-
 st.markdown(
     '<div class="title">🩺 COVID-19 Detection</div>',
     unsafe_allow_html=True
@@ -153,85 +150,101 @@ image_url = st.text_input(
 
 
 
-if image_url:
+analyze_button = st.button(
+    "🔍 Analyze X-Ray"
+)
 
-    try:
 
-        response = requests.get(
-            image_url,
-            timeout=15
+
+# ---------------- PREDICTION ----------------
+
+if analyze_button:
+
+    if image_url.strip() == "":
+        
+        st.warning(
+            "Please enter an image URL first."
         )
 
+    else:
 
-        image = Image.open(
-            BytesIO(response.content)
-        ).convert("RGB")
+        try:
 
-
-        st.image(
-            image,
-            caption="Chest X-Ray",
-            use_container_width=True
-        )
-
-
-        img = image.resize(
-            (224,224)
-        )
-
-
-        img_array = np.array(img) / 255.0
-
-
-        img_array = np.expand_dims(
-            img_array,
-            axis=0
-        )
-
-
-        with st.spinner("Analyzing X-Ray..."):
-
-            prediction = model.predict(
-                img_array
+            response = requests.get(
+                image_url,
+                timeout=15
             )
 
 
-        result = classes[
-            np.argmax(prediction)
-        ]
+            image = Image.open(
+                BytesIO(response.content)
+            ).convert("RGB")
 
 
-        confidence = (
-            np.max(prediction) * 100
-        )
+            st.image(
+                image,
+                caption="Chest X-Ray",
+                use_container_width=True
+            )
 
 
-        st.markdown(
-            f"""
-            <div class="result">
-            🧬 Prediction: {result}
-            <br><br>
-            🎯 Confidence: {confidence:.2f}%
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+            img = image.resize(
+                (224,224)
+            )
 
 
-        st.progress(
-            int(confidence)
-        )
+            img_array = np.array(img) / 255.0
 
 
-    except Exception as e:
+            img_array = np.expand_dims(
+                img_array,
+                axis=0
+            )
 
-        st.error(
-            f"Image loading error: {e}"
-        )
+
+            with st.spinner("Analyzing X-Ray..."):
+
+                prediction = model.predict(
+                    img_array
+                )
+
+
+            result = classes[
+                np.argmax(prediction)
+            ]
+
+
+            confidence = (
+                np.max(prediction) * 100
+            )
+
+
+            st.markdown(
+                f"""
+                <div class="result">
+                🧬 Prediction: {result}
+                <br><br>
+                🎯 Confidence: {confidence:.2f}%
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+
+            st.progress(
+                int(confidence)
+            )
+
+
+        except Exception as e:
+
+            st.error(
+                f"Image loading error: {e}"
+            )
 
 
 else:
 
     st.info(
-        "Please enter a chest X-ray image URL."
+        "Enter X-Ray URL and click Analyze X-Ray."
     )
