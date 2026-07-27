@@ -93,7 +93,7 @@ def load_model():
 
 
     # Correct file name (no space)
-    model_file = Path(__file__).parent / "classifier_head_fp16.npz"
+    model_file = Path(__file__).parent / "classifier_head_fp16 .npz"
 
 
     if not model_file.exists():
