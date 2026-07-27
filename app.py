@@ -55,3 +55,15 @@ def load_model():
 
 
 model = load_model()
+import os
+import numpy as np
+
+print("Current directory:", os.getcwd())
+print("Files:", os.listdir("."))
+
+try:
+    w = np.load("classifier_head_fp16.npz")
+    print("Loaded keys:", w.files)
+except Exception as e:
+    st.error(str(e))
+    raise
