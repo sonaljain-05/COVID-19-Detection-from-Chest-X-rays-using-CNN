@@ -62,7 +62,7 @@ print("Current directory:", os.getcwd())
 print("Files:", os.listdir("."))
 
 try:
-    w = np.load(w = np.load("classifier_head_fp_16.npz", allow_pickle=True))
+    w = np.load("classifier_head_fp_16.npz", allow_pickle=True)
     print("Loaded keys:", w.files)
 except Exception as e:
     st.error(str(e))
