@@ -3,115 +3,55 @@ import tensorflow as tf
 import numpy as np
 from PIL import Image
 
-# -----------------------------
-# Page Configuration
-# -----------------------------
+from tensorflow.keras.applications import VGG16
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Flatten, Dense, Dropout
+
 st.set_page_config(
     page_title="COVID-19 Detection",
     page_icon="🩺",
     layout="centered"
 )
 
-# -----------------------------
-# Custom CSS
-# -----------------------------
-st.markdown("""
-<style>
-.main {
-    background-color: #f8f9fa;
-}
-.title {
-    text-align:center;
-    font-size:40px;
-    color:#0d6efd;
-    font-weight:bold;
-}
-.subtitle{
-    text-align:center;
-    color:gray;
-    font-size:18px;
-}
-.result{
-    padding:15px;
-    border-radius:10px;
-    background:#e9f7ef;
-    text-align:center;
-    font-size:24px;
-    font-weight:bold;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# -----------------------------
-# Load Model
-# -----------------------------
-@st.cache_resource
-def load_model():
-    return tf.keras.models.load_model("best_model.h5")
-
-model = load_model()
-
 classes = ["Covid", "Normal", "Viral Pneumonia"]
 
-# -----------------------------
-# Prediction Function
-# -----------------------------
-def predict(image):
-    image = image.convert("RGB")
-    image = image.resize((224,224))
 
-    img = np.array(image)/255.0
-    img = np.expand_dims(img, axis=0)
+@st.cache_resource
+def load_model():
 
-    prediction = model.predict(img, verbose=0)
+    base_model = VGG16(
+        weights="imagenet",
+        include_top=False,
+        input_shape=(224,224,3)
+    )
 
-    index = np.argmax(prediction)
-    confidence = np.max(prediction)*100
+    for layer in base_model.layers:
+        layer.trainable = False
 
-    return classes[index], confidence
+    model = Sequential([
+        base_model,
+        Flatten(),
+        Dense(256, activation="relu"),
+        Dropout(0.5),
+        Dense(3, activation="softmax")
+    ])
 
-# -----------------------------
-# UI
-# -----------------------------
-st.markdown("<div class='title'>🩺 COVID-19 Detection</div>", unsafe_allow_html=True)
+    # Build model
+    model(np.zeros((1,224,224,3), dtype=np.float32))
 
-st.markdown("<div class='subtitle'>Chest X-Ray Classification using Deep Learning</div>", unsafe_allow_html=True)
+    w = np.load("classifier_head_fp16.npz")
 
-st.write("")
+    model.layers[2].set_weights([
+        w["dense_kernel"].astype(np.float32),
+        w["dense_bias"].astype(np.float32)
+    ])
 
-uploaded_file = st.file_uploader(
-    "📤 Upload Chest X-Ray Image",
-    type=["jpg","jpeg","png"]
-)
+    model.layers[4].set_weights([
+        w["output_kernel"].astype(np.float32),
+        w["output_bias"].astype(np.float32)
+    ])
 
-if uploaded_file:
+    return model
 
-    image = Image.open(uploaded_file)
 
-    st.image(image, caption="Uploaded X-Ray", use_container_width=True)
-
-    st.write("")
-
-    if st.button("🔍 Predict"):
-
-        with st.spinner("Analyzing Image..."):
-
-            label, confidence = predict(image)
-
-        st.success("Prediction Completed")
-
-        st.markdown(f"""
-        <div class='result'>
-        Prediction : {label}<br><br>
-        Confidence : {confidence:.2f}%
-        </div>
-        """, unsafe_allow_html=True)
-
-        if label == "Covid":
-            st.error("⚠️ Possible COVID-19 detected. Please consult a medical professional.")
-
-        elif label == "Normal":
-            st.success("✅ Chest X-Ray appears Normal.")
-
-        else:
-            st.warning("🫁 Viral Pneumonia detected.")
+model = load_model()
